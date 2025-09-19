@@ -1,0 +1,96 @@
+openapi: 3.0.0
+info:
+  title: 네이버 스마트스토어 API
+  version: 1.0.0
+
+paths:
+  # ===== 상품 관리 =====
+  /products:
+    get:
+      summary: 상품 조회
+      parameters:
+        - name: keyword
+          in: query
+          schema:
+            type: string
+      responses:
+        200:
+          description: 성공
+          
+    post:
+      summary: 상품 등록
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                price:
+                  type: integer
+      responses:
+        201:
+          description: 등록 성공
+          
+  /products/{productId}:
+    put:
+      summary: 상품 수정
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 수정 성공
+          
+  # ===== 주문 관리 =====
+  /orders:
+    get:
+      summary: 주문 조회
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PAID, SHIPPING, DELIVERED]
+      responses:
+        200:
+          description: 성공
+          
+  /orders/{orderId}/status:
+    put:
+      summary: 주문 상태 변경
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [SHIPPING, DELIVERED]
+      responses:
+        200:
+          description: 상태 변경 성공
+          
+  /orders/{orderId}/cancel:
+    post:
+      summary: 주문 취소
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 취소 성공
