@@ -135,7 +135,6 @@ paths:
                           type: integer
         401:
           description: 인증 실패 - 토큰을 확인하세요
-    
     post:
       tags:
         - 상품 관리
