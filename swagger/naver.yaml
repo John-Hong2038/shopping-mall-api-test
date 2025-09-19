@@ -22,18 +22,19 @@ tags:
     description: 주문 조회, 상태 변경, 취소
 
 paths:
-  # ===== 토큰 발급 (먼저 실행) =====
+  # ===== 토큰 발급 (제일 먼저 실행!) =====
   /external/v1/oauth2/token:
     post:
       tags:
         - 인증
-      summary: Access Token 발급 (첫번째로 실행!)
+      summary: 🔑 Access Token 발급 (먼저 실행하세요!)
       description: |
-        ## 필수 정보
-        - client_id: 5TGnBVoGoWQgKYg6KrDcKW
-        - client_secret: 팀 리더에게 문의
-        - grant_type: client_credentials
-        - type: SELF
+        ## 이 API를 먼저 실행해야 다른 API 사용 가능!
+        1. Try it out 클릭
+        2. client_secret 입력 (팀 리더에게 문의)
+        3. Execute 실행
+        4. 응답에서 access_token 복사
+        5. 다른 API의 Authorization 헤더에 "Bearer {토큰}" 형식으로 입력
       requestBody:
         required: true
         content:
@@ -53,7 +54,7 @@ paths:
                 client_secret:
                   type: string
                   example: "YOUR_SECRET_KEY_HERE"
-                  description: Slack #api-keys 채널에서 확인
+                  description: 시크릿 키를 여기에 입력하세요
                 grant_type:
                   type: string
                   default: "client_credentials"
@@ -71,30 +72,34 @@ paths:
                 properties:
                   access_token:
                     type: string
-                    example: "eyJ0eXAiOiJKV1QiLCJhbGc..."
+                    description: 이 토큰을 복사해서 사용하세요
                   token_type:
                     type: string
-                    example: "Bearer"
                   expires_in:
                     type: integer
-                    example: 86400
+              example:
+                access_token: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                token_type: "Bearer"
+                expires_in: 86400
 
   # ===== 상품 조회 =====
   /external/v2/products:
     get:
       tags:
         - 상품 관리
-      summary: 상품 목록 조회
+      summary: 상품 조회
       description: |
-        ## Authorization Header 필요
-        Bearer {access_token}
+        ## Authorization 필수
+        토큰 발급 API에서 받은 access_token을 사용
+        형식: Bearer {access_token}
       parameters:
         - name: Authorization
           in: header
           required: true
+          description: "Bearer {access_token} 형식으로 입력"
           schema:
             type: string
-            example: "Bearer YOUR_ACCESS_TOKEN_HERE"
+            example: "Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
         - name: page
           in: query
           description: 페이지 번호
@@ -128,8 +133,11 @@ paths:
                           type: integer
                         stockQuantity:
                           type: integer
+        401:
+          description: 인증 실패 - 토큰을 확인하세요
 
-    # ===== 상품 등록 =====
+  # ===== 상품 등록 =====
+  /external/v2/products:
     post:
       tags:
         - 상품 관리
@@ -139,9 +147,10 @@ paths:
         - name: Authorization
           in: header
           required: true
+          description: "Bearer {access_token} 형식으로 입력"
           schema:
             type: string
-            example: "Bearer YOUR_ACCESS_TOKEN_HERE"
+            example: "Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
       requestBody:
         required: true
         content:
@@ -167,8 +176,8 @@ paths:
                   description: 재고수량
                 detailContent:
                   type: string
-                  example: "상품 상세 설명입니다"
-                  description: 상품 상세설명
+                  example: "<p>상품 상세 설명입니다</p>"
+                  description: 상품 상세설명 (HTML)
                 images:
                   type: array
                   description: 상품 이미지
@@ -194,7 +203,7 @@ paths:
                     example: "1234567890"
 
   # ===== 상품 수정 =====
-  /external/v2/products/{productNo}:
+  /external/v2/products/{productId}:
     put:
       tags:
         - 상품 관리
@@ -204,10 +213,11 @@ paths:
         - name: Authorization
           in: header
           required: true
+          description: "Bearer {access_token} 형식으로 입력"
           schema:
             type: string
-            example: "Bearer YOUR_ACCESS_TOKEN_HERE"
-        - name: productNo
+            example: "Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
+        - name: productId
           in: path
           required: true
           description: 상품 번호
@@ -239,15 +249,16 @@ paths:
     get:
       tags:
         - 주문 관리
-      summary: 주문 목록 조회
+      summary: 주문 조회
       description: 특정 기간의 주문 목록을 조회합니다
       parameters:
         - name: Authorization
           in: header
           required: true
+          description: "Bearer {access_token} 형식으로 입력"
           schema:
             type: string
-            example: "Bearer YOUR_ACCESS_TOKEN_HERE"
+            example: "Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
         - name: lastChangeStatusFrom
           in: query
           required: true
@@ -284,35 +295,31 @@ paths:
                       properties:
                         orderNo:
                           type: string
-                          example: "2025091912345678"
                         paymentDate:
                           type: string
-                          example: "2025-09-19T10:30:00+09:00"
                         orderStatus:
                           type: string
-                          example: "PAY_DONE"
                         productName:
                           type: string
-                          example: "테스트 상품"
                         totalAmount:
                           type: integer
-                          example: 10000
 
-  # ===== 발송 처리 =====
-  /external/v1/pay-order/seller/orders/{orderNo}/dispatch:
+  # ===== 주문 상태 변경 (발송 처리) =====
+  /external/v1/pay-order/seller/orders/{orderId}/dispatch:
     put:
       tags:
         - 주문 관리
-      summary: 발송 처리 (주문 상태 변경)
+      summary: 주문 상태 변경
       description: 주문을 발송 처리하고 송장번호를 등록합니다
       parameters:
         - name: Authorization
           in: header
           required: true
+          description: "Bearer {access_token} 형식으로 입력"
           schema:
             type: string
-            example: "Bearer YOUR_ACCESS_TOKEN_HERE"
-        - name: orderNo
+            example: "Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
+        - name: orderId
           in: path
           required: true
           description: 주문 번호
@@ -354,7 +361,7 @@ paths:
           description: 발송 처리 성공
 
   # ===== 주문 취소 =====
-  /external/v1/pay-order/seller/orders/{orderNo}/cancel:
+  /external/v1/pay-order/seller/orders/{orderId}/cancel:
     post:
       tags:
         - 주문 관리
@@ -364,10 +371,11 @@ paths:
         - name: Authorization
           in: header
           required: true
+          description: "Bearer {access_token} 형식으로 입력"
           schema:
             type: string
-            example: "Bearer YOUR_ACCESS_TOKEN_HERE"
-        - name: orderNo
+            example: "Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
+        - name: orderId
           in: path
           required: true
           description: 주문 번호
