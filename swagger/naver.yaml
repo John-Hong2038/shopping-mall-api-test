@@ -82,7 +82,7 @@ paths:
                 token_type: "Bearer"
                 expires_in: 86400
 
-  # ===== 상품 조회 =====
+  # ===== 상품 조회 및 등록 (같은 경로는 함께 정의) =====
   /external/v2/products:
     get:
       tags:
@@ -135,9 +135,7 @@ paths:
                           type: integer
         401:
           description: 인증 실패 - 토큰을 확인하세요
-
-  # ===== 상품 등록 =====
-  /external/v2/products:
+    
     post:
       tags:
         - 상품 관리
