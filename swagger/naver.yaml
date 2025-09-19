@@ -82,16 +82,13 @@ paths:
                 token_type: "Bearer"
                 expires_in: 86400
 
-  # ===== 상품 조회 및 등록 (같은 경로는 함께 정의) =====
-  /external/v2/products:
-    get:
+  # ===== 상품 조회 (v2 API) =====
+  /v2/products:
+    post:
       tags:
         - 상품 관리
-      summary: 상품 조회
-      description: |
-        ## Authorization 필수
-        토큰 발급 API에서 받은 access_token을 사용
-        형식: Bearer {access_token}
+      summary: 상품 조회 (검색)
+      description: 상품을 검색합니다
       parameters:
         - name: Authorization
           in: header
@@ -100,18 +97,19 @@ paths:
           schema:
             type: string
             example: "Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
-        - name: page
-          in: query
-          description: 페이지 번호
-          schema:
-            type: integer
-            default: 1
-        - name: size
-          in: query
-          description: 페이지 사이즈
-          schema:
-            type: integer
-            default: 10
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                page:
+                  type: integer
+                  example: 1
+                size:
+                  type: integer
+                  example: 10
       responses:
         200:
           description: 조회 성공
@@ -119,22 +117,9 @@ paths:
             application/json:
               schema:
                 type: object
-                properties:
-                  content:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        productNo:
-                          type: string
-                        name:
-                          type: string
-                        salePrice:
-                          type: integer
-                        stockQuantity:
-                          type: integer
-        401:
-          description: 인증 실패 - 토큰을 확인하세요
+
+  # ===== 상품 등록 =====
+  /v2/products:
     post:
       tags:
         - 상품 관리
@@ -162,92 +147,23 @@ paths:
                 name:
                   type: string
                   example: "테스트 상품"
-                  description: 상품명
                 salePrice:
                   type: integer
                   example: 10000
-                  description: 판매가격
                 stockQuantity:
                   type: integer
                   example: 100
-                  description: 재고수량
-                detailContent:
-                  type: string
-                  example: "<p>상품 상세 설명입니다</p>"
-                  description: 상품 상세설명 (HTML)
-                images:
-                  type: array
-                  description: 상품 이미지
-                  items:
-                    type: object
-                    properties:
-                      imageUrl:
-                        type: string
-                        example: "https://example.com/image.jpg"
-                      imageOrder:
-                        type: integer
-                        example: 1
       responses:
         201:
           description: 등록 성공
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  productNo:
-                    type: string
-                    example: "1234567890"
 
-  # ===== 상품 수정 =====
-  /external/v2/products/{productId}:
-    put:
-      tags:
-        - 상품 관리
-      summary: 상품 수정
-      description: 기존 상품 정보를 수정합니다
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          description: "Bearer {access_token} 형식으로 입력"
-          schema:
-            type: string
-            example: "Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
-        - name: productId
-          in: path
-          required: true
-          description: 상품 번호
-          schema:
-            type: string
-            example: "1234567890"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  example: "수정된 상품명"
-                salePrice:
-                  type: integer
-                  example: 15000
-                stockQuantity:
-                  type: integer
-                  example: 50
-      responses:
-        200:
-          description: 수정 성공
-
-  # ===== 주문 조회 =====
-  /external/v1/pay-order/seller/orders:
+  # ===== 주문 조회 (실제 API 경로) =====
+  /v1/pay-order/seller/product-orders:
     get:
       tags:
         - 주문 관리
-      summary: 주문 조회
-      description: 특정 기간의 주문 목록을 조회합니다
+      summary: 주문 상품 조회
+      description: 주문 상품 목록을 조회합니다
       parameters:
         - name: Authorization
           in: header
@@ -256,27 +172,34 @@ paths:
           schema:
             type: string
             example: "Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
-        - name: lastChangeStatusFrom
+        - name: lastChangedFrom
           in: query
           required: true
-          description: 조회 시작일
+          description: 조회 시작일 (yyyy-MM-dd'T'HH:mm:ss.SSSXXX)
           schema:
             type: string
-            example: "2025-09-01T00:00:00+09:00"
-        - name: lastChangeStatusTo
+            example: "2025-09-01T00:00:00.000+09:00"
+        - name: lastChangedTo
           in: query
           required: true
           description: 조회 종료일
           schema:
             type: string
-            example: "2025-09-19T23:59:59+09:00"
-        - name: lastChangeStatuses
+            example: "2025-09-19T23:59:59.999+09:00"
+        - name: lastChangedType
           in: query
-          description: 주문 상태 필터
+          required: true
+          description: 조회 기준 (PAID_DATE, PRODUCT_ORDER_DATE, CLAIM_DATE 등)
           schema:
             type: string
-            enum: [PAY_DONE, DISPATCH_DONE, PURCHASE_CONFIRM, CANCELED]
-            example: "PAY_DONE"
+            enum: [PAID_DATE, PRODUCT_ORDER_DATE, DISPATCHED_DATE, CLAIM_DATE]
+            default: "PAID_DATE"
+        - name: productOrderStatus
+          in: query
+          description: 주문 상태
+          schema:
+            type: string
+            enum: [PAYMENT_WAITING, PAYED, DELIVERING, DELIVERED, CANCELED]
       responses:
         200:
           description: 조회 성공
@@ -285,29 +208,18 @@ paths:
               schema:
                 type: object
                 properties:
-                  data:
+                  content:
                     type: array
                     items:
                       type: object
-                      properties:
-                        orderNo:
-                          type: string
-                        paymentDate:
-                          type: string
-                        orderStatus:
-                          type: string
-                        productName:
-                          type: string
-                        totalAmount:
-                          type: integer
 
-  # ===== 주문 상태 변경 (발송 처리) =====
-  /external/v1/pay-order/seller/orders/{orderId}/dispatch:
-    put:
+  # ===== 주문 상태 조회 API =====
+  /v1/pay-order/seller/product-orders/last-changed-statuses:
+    get:
       tags:
         - 주문 관리
-      summary: 주문 상태 변경
-      description: 주문을 발송 처리하고 송장번호를 등록합니다
+      summary: 최근 변경된 주문 상태 조회
+      description: 최근 변경된 주문 상태를 조회합니다
       parameters:
         - name: Authorization
           in: header
@@ -316,13 +228,37 @@ paths:
           schema:
             type: string
             example: "Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
-        - name: orderId
-          in: path
+        - name: lastChangedFrom
+          in: query
           required: true
-          description: 주문 번호
           schema:
             type: string
-            example: "2025091912345678"
+            example: "2025-09-01T00:00:00.000+09:00"
+        - name: lastChangedTo
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "2025-09-19T23:59:59.999+09:00"
+      responses:
+        200:
+          description: 조회 성공
+
+  # ===== 발송 처리 =====
+  /v1/pay-order/seller/product-orders/dispatch:
+    post:
+      tags:
+        - 주문 관리
+      summary: 발송 처리
+      description: 주문을 발송 처리합니다
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: "Bearer {access_token} 형식으로 입력"
+          schema:
+            type: string
+            example: "Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
       requestBody:
         required: true
         content:
@@ -330,40 +266,32 @@ paths:
             schema:
               type: object
               properties:
-                dispatchDetails:
+                productOrderIds:
                   type: array
                   items:
-                    type: object
-                    required:
-                      - deliveryCompany
-                      - trackingNumber
-                    properties:
-                      deliveryCompany:
-                        type: string
-                        enum: [CJGLS, HANJIN, LOTTE, POST, LOGEN]
-                        example: "CJGLS"
-                        description: |
-                          택배사 코드
-                          - CJGLS: CJ대한통운
-                          - HANJIN: 한진택배
-                          - LOTTE: 롯데택배
-                          - POST: 우체국
-                          - LOGEN: 로젠택배
-                      trackingNumber:
-                        type: string
-                        example: "123456789012"
-                        description: 송장번호
+                    type: string
+                  example: ["2025091912345678"]
+                deliveryMethod:
+                  type: string
+                  enum: [DELIVERY, DIRECT_DELIVERY, QUICK_SERVICE, VISIT_RECEIPT]
+                  example: "DELIVERY"
+                deliveryCompanyCode:
+                  type: string
+                  example: "CJGLS"
+                trackingNumber:
+                  type: string
+                  example: "123456789012"
       responses:
         200:
           description: 발송 처리 성공
 
-  # ===== 주문 취소 =====
-  /external/v1/pay-order/seller/orders/{orderId}/cancel:
+  # ===== 주문 취소 승인 =====
+  /v1/pay-order/seller/product-orders/{productOrderId}/claim/cancel/approve:
     post:
       tags:
         - 주문 관리
-      summary: 주문 취소
-      description: 주문을 취소 처리합니다
+      summary: 취소 승인
+      description: 구매자가 요청한 취소를 승인합니다
       parameters:
         - name: Authorization
           in: header
@@ -372,35 +300,13 @@ paths:
           schema:
             type: string
             example: "Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
-        - name: orderId
+        - name: productOrderId
           in: path
           required: true
-          description: 주문 번호
+          description: 상품 주문 번호
           schema:
             type: string
             example: "2025091912345678"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - cancelReason
-              properties:
-                cancelReason:
-                  type: string
-                  enum: [INTENT_CHANGED, SOLD_OUT, DELIVERY_DELAYED]
-                  example: "SOLD_OUT"
-                  description: |
-                    취소 사유
-                    - INTENT_CHANGED: 구매 의사 취소
-                    - SOLD_OUT: 품절
-                    - DELIVERY_DELAYED: 배송 지연
-                cancelDetailReason:
-                  type: string
-                  example: "재고 부족으로 인한 취소"
-                  description: 상세 취소 사유
       responses:
         200:
-          description: 취소 성공
+          description: 취소 승인 성공
